@@ -66,6 +66,14 @@ urcast-node-pi5/
 
 ---
 
+## Repository Commit History & Test Development
+
+You can inspect the complete evolution of the individual sensor scripts and diagnostic code on GitHub:
+
+- **Repository:** [leonas-stanis/udp-pi-test-code](https://github.com/leonas-stanis/udp-pi-test-code)
+- **Commit History:** Track incremental updates, bug fixes, and bus isolation testing across individual commits via the [GitHub Commit Log](https://github.com/leonas-stanis/udp-pi-test-code/commits/main/).
+
+
 ## Getting Started and Installation
 
 ### Prerequisites
