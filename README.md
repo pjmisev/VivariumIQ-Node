@@ -1,142 +1,123 @@
-# urcast Raspberry Pi Weather Node README
+# urcast Raspberry Pi 5 Weather Node README
 
-> A Python-based edge telemetry collection script designed to run on outdoor Raspberry Pi weather stations. This repository contains the hardware-interfacing code responsible for gathering environmental data from local sensors and submitting it via HTTP REST API to the centralized urcast backend.
+> A Python-based telemetry collection and diagnostic script designed for the urcast weather station project running on a Raspberry Pi 5. This script validates hardware communication, independent I2C bus splitting, and continuous raw environmental data acquisition.
 
 ---
 
 ## About the Weather Node
 
-The **urcast Node** runs locally on a Raspberry Pi (such as the Raspberry Pi Zero 2 W) deployed inside an outdoor protective enclosure. Using a scheduled cron job, the script executes at regular intervals to read real-time environmental metrics, capture location and timestamp data via GPS, and securely transmit the payload to the FastAPI backend.
+The **urcast Weather Node** runs locally on a Raspberry Pi 5 deployed inside an outdoor protective enclosure. It simultaneously communicates with three separate environmental sensors using isolated peripheral interfaces—utilizing the Raspberry Pi 5's hardware I2C bus, a software bit-banged I2C bus, and a direct single-wire GPIO connection. Each sensor read is wrapped in fault-tolerant exception handling to guarantee that a glitch or failure in one sensor never interrupts the others.
 
 ---
 
 ## Key Features and Responsibilities
 
-* **Sensor Data Collection:** Interfaces with connected hardware to measure temperature, humidity, atmospheric pressure, and ambient light levels.
-* **GPS Positioning and Timing:** Obtains precise latitude, longitude coordinates, and synchronized timestamps via a GPS module.
-* **Automated Telemetry Transmission:** Formats sensor readings into structured JSON payloads and submits them to the backend API over HTTP.
-* **Error Resilience:** Designed to handle temporary network disconnections, sensor read timeouts, or connection failures gracefully without crashing the system or corrupting local operations.
+- **Isolated Multi-Bus Architecture:** Communicates with the TSL2591 light sensor via hardware I2C (Bus 1) and the BMP280 pressure sensor via software bit-banged I2C (`adafruit_bitbangio`) on separate pins, eliminating bus contention and speed interference.
+- **Fault-Tolerant Error Handling:** Implements independent `try/except` boundaries around every sensor call, returning `None` on failure so the continuous sampling loop remains active.
+- **Raw Telemetry Output:** Captures unadjusted base metrics (`ch0`, `ch1`, `lux`, `temperature`, `humidity`, and absolute station `pressure`), leaving derivative math like altitude, dew point, cloud index, and pressure trends to the backend application.
+- **Formatted Terminal Diagnostics:** Prints structured, columnar log lines with UTC ISO timestamps and sequential sample numbering.
 
 ---
 
-## Hardware Stack
+## Hardware Stack & Wiring Guide
 
-* **Microcontroller:** Raspberry Pi (Zero 2 W)
-* **Temperature and Humidity:** DHT22 sensor
-* **Atmospheric Pressure:** BMP280 sensor
-* **Light Level:** BH1750 sensor
-* **Location and Time:** NEO-6M GPS module
-* **Power and Housing:** Weatherproof outdoor enclosure with proper ventilation and sun-shading.
+- **Microcontroller:** Raspberry Pi 5
+
+| Sensor | Protocol | GPIO Pins | Physical Connections |
+| :--- | :--- | :--- | :--- |
+| **TSL2591** (Light) | Hardware I2C (Bus 1) | GPIO 2 (SDA), GPIO 3 (SCL) | VIN $\rightarrow$ Pin 17 (3.3V)<br>GND $\rightarrow$ Pin 6<br>SCL $\rightarrow$ Pin 5<br>SDA $\rightarrow$ Pin 3 |
+| **BMP280** (Pressure) | Software I2C (Bitbangio) | GPIO 17 (SDA), GPIO 27 (SCL) | VCC $\rightarrow$ Pin 1 (3.3V)<br>GND $\rightarrow$ Pin 9<br>SCL $\rightarrow$ Pin 13<br>SDA $\rightarrow$ Pin 11 |
+| **DHT22** (Temp/Humidity) | Single-Wire Data | GPIO 4 | VCC $\rightarrow$ Pin 4 (5V)<br>DATA $\rightarrow$ Pin 7 *(with pull-up resistor to VCC)*<br>GND $\rightarrow$ Pin 14 |
+
+---
+
+## Data Fields and Backend Processing Strategy
+
+The node focuses strictly on raw data collection to keep edge operations simple and lightweight:
+
+| Sensor | Reported Fields | Calculated / Derived on Backend |
+| :--- | :--- | :--- |
+| **TSL2591** | `lux`, `ch0` (Full Spectrum), `ch1` (Infrared) | `visible` ($ch0 - ch1$), `broadband` ($ch0$), gain clipping detection |
+| **DHT22** | `temperature` (°C), `humidity` (%) | Dew point, dew point spread, air comfort index |
+| **BMP280** | `pressure` (hPa absolute) | Relative sea-level pressure, altitude estimation, pressure trend |
 
 ---
 
 ## Technology Stack
 
-* **Language:** Python 3.10+
-* **HTTP Client:** `requests` library for REST API communication
-* **Sensor Libraries:** Adafruit CircuitPython libraries and GPIO/I2C peripheral interfaces
-* **Scheduling:** Linux `cron` (crontab)
+- **Language:** Python 3.10+
+- **Peripheral Libraries:** Adafruit CircuitPython (`board`, `busio`, `bitbangio`, `adafruit_tsl2591`, `adafruit_bmp280`, `adafruit_dht`)
+- **Runtime Utilities:** `time`, `datetime` (UTC-enforced timestamping)
 
 ---
 
-## Project Architecture (Node Client)
+## Project Architecture
 
 ```text
-urcast-node/
+urcast-node-pi5/
 │
-├── sensors/            # Individual sensor interface wrappers (dht22.py, bmp280.py, bh1750.py, gps.py)
-├── api/                # HTTP client module for communicating with the urcast backend API
-├── config.py           # Configuration loader (API endpoints, node authentication tokens, logging settings)
-├── main.py             # Entry point script executing data collection and transmission
-├── requirements.txt    # Python hardware and utility dependencies
-└── .env.example        # Template for environment variables
-
+├── tests/
+│   ├── bmp280.py         # Standalone hardware test script for BMP280 pressure sensor
+│   ├── dht22.py          # Standalone hardware test script for DHT22 temp & humidity sensor
+│   ├── tsl2591.py        # Standalone hardware test script for TSL2591 light sensor
+│   └── combinedTest.py   # Main entry point script executing multi-bus setup, reading loop, and formatted output
+└── README.md           # Project documentation
 ```
 
 ---
+
+## Repository Commit History & Test Development
+
+You can inspect the complete evolution of the individual sensor scripts and diagnostic code on GitHub:
+
+- **Repository:** [leonas-stanis/udp-pi-test-code](https://github.com/leonas-stanis/udp-pi-test-code)
+- **Commit History:** Track incremental updates, bug fixes, and bus isolation testing across individual commits via the [GitHub Commit Log](https://github.com/leonas-stanis/udp-pi-test-code/commits/main/).
+
 
 ## Getting Started and Installation
 
 ### Prerequisites
 
-* A Raspberry Pi running Raspberry Pi OS with I2C and UART interfaces enabled via `sudo raspi-config`.
-* Physical wiring of the DHT22, BMP280, BH1750, and NEO-6M GPS modules to the appropriate Raspberry Pi GPIO pins.
+- A Raspberry Pi 5 running Raspberry Pi OS with I2C interfaces enabled via `sudo raspi-config`.
+- Physical wiring of the TSL2591, BMP280, and DHT22 modules according to the hardware stack pinout table above.
 
 ### Setup Instructions
 
-1. Clone the repository onto your Raspberry Pi:
+1. Clone or download this repository to your Raspberry Pi 5:
 ```bash
-git clone https://github.com/your-team/urcast-node.git
-cd urcast-node
-
+git clone https://github.com/urcast/urcast-node/tree/main
 ```
-
 
 2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate
-
 ```
 
-
-3. Install dependencies:
+3. Install required Adafruit CircuitPython dependencies:
 ```bash
-pip install -r requirements.txt
-
+pip install adafruit-circuitpython-tsl2591 adafruit-circuitpython-bmp280 adafruit-circuitpython-dht adafruit-blinka
 ```
-
-
-4. Create your local configuration file (`.env`) based on the template:
-```env
-API_BASE_URL=https://api.urcast.local/v1
-NODE_ID=1
-NODE_SECRET_KEY=your_secure_node_token
-
-```
-
-
 
 ---
 
-## Configuring Automation via Crontab
+## Running and Testing
 
-To ensure the script runs automatically at fixed intervals (for example, every 10 minutes), configure a cron job.
-
-1. Open the crontab editor:
-```bash
-crontab -e
-
-```
-
-
-2. Add the following entry to execute the Python script using your virtual environment interpreter every 10 minutes:
-```cron
-*/10 * * * * /home/pi/urcast-node/venv/bin/python /home/pi/urcast-node/main.py >> /home/pi/urcast-node/node.log 2>&1
-
-```
-
-
-
----
-
-## Testing and Manual Execution
-
-To test data collection and ensure the script successfully communicates with the backend without waiting for the cron schedule, run the script manually:
+To execute the data collection loop and monitor sensor readings directly in your terminal:
 
 ```bash
-python main.py
-
+cd test
+python combinedTest.py
 ```
 
-Check the generated log file (`node.log`) to verify sensor readings and inspect HTTP response codes from the backend API.
+Press `Ctrl+C` at any time to safely terminate the execution loop and release hardware interfaces.
 
 ---
 
 ## Team
 
-* **Pijus (PM)** – Back-End, Version Control
-* **Raivis** – Database, Back-End
-* **Anastasija** – Front-End, UI/UX/UD, Database
-* **Leonas** – Hardware, Front-End
-* **Kornel** – UI/UX/UD, Testing, Hardware
+- **Pijus (PM)** – Back-End, Version Control
+- **Raivis** – Database, Back-End
+- **Anastasija** – Front-End, UI/UX/UD, Database
+- **Leonas** – Hardware, Front-End
+- **Kornel** – UI/UX/UD, Testing, Hardware
