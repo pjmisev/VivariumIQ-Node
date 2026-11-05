@@ -69,13 +69,18 @@ import adafruit_tsl2591
 import board
 import busio
 
+import config
 import mqtt_client
 
 DHT_PIN = board.D4
 BMP_SDA_PIN = board.D17  # Physical Pin 11
 BMP_SCL_PIN = board.D27  # Physical Pin 13
 BMP280_ADDRESS = 0x76
-READ_INTERVAL_S = 3.0
+READ_INTERVAL_S = config.get_float(
+    "URCAST_READ_INTERVAL_S",
+    config.DEFAULT_READ_INTERVAL_S,
+    minimum=0.1,
+)
 CELL_WIDTH = 24  # column width for the per-sensor printout
 
 TSL_GAIN = adafruit_tsl2591.GAIN_LOW
