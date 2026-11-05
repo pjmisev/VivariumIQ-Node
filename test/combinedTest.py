@@ -69,6 +69,8 @@ import adafruit_tsl2591
 import board
 import busio
 
+import mqtt_client
+
 DHT_PIN = board.D4
 BMP_SDA_PIN = board.D17  # Physical Pin 11
 BMP_SCL_PIN = board.D27  # Physical Pin 13
@@ -225,10 +227,27 @@ def main():
 
             print_sample(ts, seq, light, air, press)
 
+            if mqtt_client.send_reading(
+                temperature=air.get("temperature"),
+                humidity=air.get("humidity"),
+                pressure=press.get("pressure"),
+                light_level=light.get("lux"),
+            ):
+                # every 10th sample also report sensor health and heartbeat
+                if seq % 10 == 0:
+                    mqtt_client.send_heartbeat()
+                    mqtt_client.send_diagnostic(
+                        light_ok=light.get("lux") is not None
+                        or light.get("ch0") is not None,
+                        air_ok=air.get("temperature") is not None,
+                        pressure_ok=press.get("pressure") is not None,
+                    )
+
             time.sleep(READ_INTERVAL_S)
     except KeyboardInterrupt:
         print("\nStopping.")
     finally:
+        mqtt_client.close()
         if dht is not None:
             dht.exit()
         if i2c_hw is not None:
