@@ -9,13 +9,15 @@
 #   URCAST_MQTT_BROKER -- the machine running the urcast API and Mosquitto
 #   URCAST_MQTT_PORT   -- the Mosquitto port
 #   URCAST_NODE_ID     -- the id returned by registration
-#   URCAST_NODE_TOKEN  -- the JWT from /api/auth/login (it expires after 24 hours)
+#   URCAST_NODE_TOKEN  -- the JWT from /api/auth/login; auth_client refreshes it
+#                        automatically before it expires
 
 import json
 import time
 
 import paho.mqtt.client as mqtt
 
+import auth_client
 import config
 
 _STARTED_AT = time.monotonic()
@@ -31,8 +33,7 @@ def _settings():
         maximum=65535,
     )
     node_id = config.get_int("URCAST_NODE_ID", required=True, minimum=1)
-    token = config.get_str("URCAST_NODE_TOKEN", required=True)
-    return broker, port, node_id, token
+    return broker, port, node_id
 
 
 def _new_client():
@@ -68,8 +69,9 @@ def _get_client(broker, port):
 
 def _publish(kind, fields):
     try:
-        broker, port, node_id, token = _settings()
-    except config.ConfigError as error:
+        broker, port, node_id = _settings()
+        token = auth_client.get_token()
+    except (config.ConfigError, auth_client.AuthError) as error:
         print(f"could not send {kind}: {error}")
         return False
 
