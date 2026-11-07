@@ -1,0 +1,7 @@
+Adafruit-Blinka
+adafruit-circuitpython-bmp280
+adafruit-circuitpython-dht
+adafruit-circuitpython-tsl2591
+gpiod>=2.2.2,<3
+paho-mqtt>=2.0
+python-dotenv>=1.0

@@ -1,32 +1,28 @@
 # One-time registration for the urcast weather node.
 #
 # A node can only be created by a logged-in user. This script sends
-# POST /api/node with the owner's JWT in the Authorization header, then prints
-# the node_id returned by the API. Put that id and the same token into
-# mqtt_client.py, then run combinedTest.py normally.
+# POST /api/node with the owner's JWT in the Authorization header, then saves
+# the returned node id to the repository-root .env as URCAST_NODE_ID.
 #
-# The JWT expires 24 hours after login. If the API returns HTTP 401, log in
-# again, paste the new token into NODE_TOKEN, and run this script again.
+# Settings are read from .env:
+#   URCAST_API_URL        -- address of the urcast API
+#   URCAST_NODE_TOKEN     -- the JWT from /api/auth/login
+#   URCAST_NODE_NAME      -- a name for this node (1-100 characters)
+#   URCAST_NODE_LOCATION  -- optional human-readable location
+#   URCAST_NODE_LATITUDE  -- optional decimal latitude
+#   URCAST_NODE_LONGITUDE -- optional decimal longitude
 #
-# Edit the settings below:
-#   API_URL       -- address of the urcast API
-#   NODE_TOKEN    -- the JWT from /api/auth/login
-#   NODE_NAME     -- a name for this node (1-100 characters)
-#   NODE_LOCATION -- optional human-readable location
-#   NODE_LATITUDE -- optional decimal latitude
-#   NODE_LONGITUDE-- optional decimal longitude
+# The JWT expires 24 hours after login. If the API returns HTTP 401, run the
+# login step again or use setup_node.py to refresh the token automatically.
 
 import json
 import sys
 import urllib.error
 import urllib.request
 
-API_URL = "http://localhost:8000"
-NODE_TOKEN = "paste-your-jwt-token-here"
-NODE_NAME = "pi5-outdoor"
-NODE_LOCATION = "Dublin, Ireland"
-NODE_LATITUDE = None
-NODE_LONGITUDE = None
+import config
+
+PLACEHOLDER_TOKEN = "paste-your-jwt-token-here"
 
 
 def _error_detail(body):
@@ -37,18 +33,40 @@ def _error_detail(body):
 
 
 def register_node():
-    payload = {"node_name": NODE_NAME, "location_name": NODE_LOCATION}
-    if NODE_LATITUDE is not None:
-        payload["latitude"] = NODE_LATITUDE
-    if NODE_LONGITUDE is not None:
-        payload["longitude"] = NODE_LONGITUDE
+    api_url = config.get_str("URCAST_API_URL", config.DEFAULT_API_URL).rstrip("/")
+    node_token = config.get_str("URCAST_NODE_TOKEN", required=True)
+    node_name = config.get_str("URCAST_NODE_NAME", config.DEFAULT_NODE_NAME)
+    node_location = config.get_str("URCAST_NODE_LOCATION")
+    latitude = config.get_optional_float(
+        "URCAST_NODE_LATITUDE", minimum=-90, maximum=90
+    )
+    longitude = config.get_optional_float(
+        "URCAST_NODE_LONGITUDE", minimum=-180, maximum=180
+    )
+
+    if node_token == PLACEHOLDER_TOKEN:
+        print("Registration failed: URCAST_NODE_TOKEN is still the placeholder.")
+        print("Run setup_node.py or log in and update URCAST_NODE_TOKEN in .env.")
+        return None
+
+    if not 1 <= len(node_name) <= 100:
+        print("Registration failed: node name must be 1-100 characters.")
+        return None
+
+    payload = {"node_name": node_name}
+    if node_location is not None:
+        payload["location_name"] = node_location
+    if latitude is not None:
+        payload["latitude"] = latitude
+    if longitude is not None:
+        payload["longitude"] = longitude
 
     request = urllib.request.Request(
-        f"{API_URL.rstrip('/')}/api/node",
+        f"{api_url}/api/node",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {NODE_TOKEN}",
+            "Authorization": f"Bearer {node_token}",
         },
         method="POST",
     )
@@ -63,7 +81,7 @@ def register_node():
         if error.code == 401:
             print("Registration failed: invalid or expired token (HTTP 401).")
             print(f"API detail: {detail}")
-            print("Log in again and paste the new token into NODE_TOKEN.")
+            print("Run setup_node.py or log in again to refresh URCAST_NODE_TOKEN.")
         elif error.code == 422:
             print("Registration failed: validation error (HTTP 422).")
             print(f"API detail: {detail}")
@@ -72,7 +90,7 @@ def register_node():
             print(f"API detail: {detail}")
         return None
     except urllib.error.URLError as error:
-        print(f"Could not reach the API at {API_URL}: {error.reason}")
+        print(f"Could not reach the API at {api_url}: {error.reason}")
         return None
 
     try:
@@ -83,19 +101,25 @@ def register_node():
         return None
 
     node_id = node.get("node_id")
-    print(f"node_name: {node.get('node_name', NODE_NAME)}")
+    if node_id is None:
+        print("Registration succeeded but the API response did not include node_id.")
+        print(f"API response: {body}")
+        return None
+
+    config.save({"URCAST_NODE_ID": node_id})
+    print(f"node_name: {node.get('node_name', node_name)}")
     print(f"node_id:   {node_id}")
     print()
-    print("Put this node_id into NODE_ID in mqtt_client.py.")
+    print("Saved URCAST_NODE_ID to .env.")
     return node_id
 
 
 def main():
-    if NODE_TOKEN == "paste-your-jwt-token-here":
-        print("Edit register_node.py and paste your JWT into NODE_TOKEN first.")
-        sys.exit(1)
-
-    if register_node() is None:
+    try:
+        if register_node() is None:
+            sys.exit(1)
+    except config.ConfigError as error:
+        print(f"Registration failed: {error}")
         sys.exit(1)
 
 
