@@ -130,8 +130,8 @@ cp .env.example .env
 
 Set at least the API and broker addresses:
 ```dotenv
-URCAST_API_URL=http://<api-host>:8000
-URCAST_MQTT_BROKER=<broker-host>
+URCAST_API_URL=https://urcast.pjmisev.com
+URCAST_MQTT_BROKER=urcast.pjmisev.com
 URCAST_MQTT_PORT=1883
 ```
 
@@ -139,7 +139,17 @@ Leave `URCAST_NODE_ID`, `URCAST_NODE_TOKEN`, `URCAST_EMAIL`, and `URCAST_PASSWOR
 
 If the node runs on the Pi and the API runs on your laptop, use the laptop's LAN IP, not `localhost`.
 
-5. Run the interactive setup:
+5. In your local created .env, manually change the location to the correct details using a text editor like micro or vim
+
+```
+URCAST_NODE_NAME=johndoe-outdoor-garden
+URCAST_NODE_LOCATION=Dublin, Ireland
+
+URCAST_NODE_LATITUDE=53.32382908805492
+URCAST_NODE_LONGITUDE=-6.3176879781791895
+```
+
+6. Run the interactive setup:
 ```bash
 cd test
 python setup_node.py
