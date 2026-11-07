@@ -223,8 +223,8 @@ Use `python setup_node.py --setup-only` to stop before step 8.
 | `URCAST_PASSWORD` | login/register prompt |
 | `URCAST_NODE_TOKEN` | `/api/auth/login` response |
 | `URCAST_NODE_ID` | `POST /api/node` response |
-| `URCAST_NODE_NAME`, `URCAST_NODE_LOCATION`, `URCAST_NODE_LATITUDE`, `URCAST_NODE_LONGITUDE` | registration prompt |
-| `URCAST_READ_INTERVAL_S` | you (optional, defaults to `3.0`) |
+| `URCAST_NODE_NAME`, `URCAST_NODE_LOCATION`, `URCAST_NODE_LATITUDE`, `URCAST_NODE_LONGITUDE` | information for database to be filled in manually |
+| `URCAST_READ_INTERVAL_S` | you (optional, defaults to `60.0`) |
 
 `.env` is gitignored and is set to owner-only permissions (`600`) on Linux. Do not share it: it contains the account password and node JWT.
 
@@ -255,7 +255,7 @@ The API endpoints used are:
 - `POST /api/user` with `username`, `email`, `password`
 - `POST /api/auth/login` with `email`, `password`; returns `access_token`
 - `GET /api/auth/me` with `Authorization: Bearer <token>`
-- `POST /api/node` with `Authorization: Bearer <token>` and `node_name`, optional `location_name`, `latitude`, and `longitude`
+- `POST /api/node` with `Authorization: Bearer <token>` and `node_name`, `location_name`, `latitude`, and `longitude`
 
 ### MQTT topics
 

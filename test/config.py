@@ -28,7 +28,7 @@ DEFAULT_API_URL = "http://localhost:8000"
 DEFAULT_MQTT_BROKER = "localhost"
 DEFAULT_MQTT_PORT = 1883
 DEFAULT_NODE_NAME = "pi5-outdoor"
-DEFAULT_READ_INTERVAL_S = 3.0
+DEFAULT_READ_INTERVAL_S = 60.0
 
 
 class ConfigError(ValueError):
