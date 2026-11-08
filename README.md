@@ -100,7 +100,7 @@ You can inspect the complete evolution of the individual sensor scripts and diag
 
 1. Clone or download this repository to your Raspberry Pi 5:
 ```bash
-git clone https://github.com/urcast/urcast-node/tree/main
+git clone https://github.com/urcast/urcast-node
 ```
 
 2. Install MQTT Broker and local client tools and start the services. As well as set them to start on boot.
