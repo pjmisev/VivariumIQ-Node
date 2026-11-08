@@ -25,8 +25,13 @@ ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 
 DEFAULT_API_URL = "http://localhost:8000"
-DEFAULT_MQTT_BROKER = "localhost"
-DEFAULT_MQTT_PORT = 1883
+# MQTT runs over TLS on port 8883. The broker address must be the DNS-only
+# (grey cloud) hostname urcast.pjmisev.com pointing straight at the EC2 IP, so
+# the Let's Encrypt certificate hostname matches during TLS verification. The
+# record must stay un-proxied: Cloudflare only proxies HTTP(S), so with the
+# proxy on, port 8883 never reaches Mosquitto.
+DEFAULT_MQTT_BROKER = "urcast.pjmisev.com"
+DEFAULT_MQTT_PORT = 8883
 DEFAULT_NODE_NAME = "pi5-outdoor"
 DEFAULT_READ_INTERVAL_S = 60.0
 

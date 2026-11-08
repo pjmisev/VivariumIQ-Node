@@ -5,9 +5,18 @@
 # or wrong token, so keep the node account in sync with the account that
 # registered this node.
 #
+# The connection to the broker uses TLS on port 8883. tls_set() with no
+# arguments trusts the Pi's system CA store and verifies the broker's Let's
+# Encrypt certificate, including the hostname, so the broker address must be
+# the DNS-only (grey cloud) hostname urcast.pjmisev.com pointing straight at
+# the EC2 IP. The record must stay un-proxied: Cloudflare only proxies
+# HTTP(S), so with the proxy on, port 8883 never reaches Mosquitto. TLS is
+# transport-level only; payload format, topics, and the JWT-in-payload auth
+# are unchanged.
+#
 # Settings are read from the repository-root .env:
-#   URCAST_MQTT_BROKER -- the machine running the urcast API and Mosquitto
-#   URCAST_MQTT_PORT   -- the Mosquitto port
+#   URCAST_MQTT_BROKER -- the broker hostname (urcast.pjmisev.com)
+#   URCAST_MQTT_PORT   -- the Mosquitto TLS port (8883)
 #   URCAST_NODE_ID     -- the id returned by registration
 #   URCAST_NODE_TOKEN  -- the JWT from /api/auth/login; auth_client refreshes it
 #                        automatically before it expires
@@ -62,7 +71,9 @@ def _get_client(broker, port):
 
     _drop_client()
     _client = _new_client()
-    _client.connect(broker, port)
+    # System CA store + hostname verification against the broker certificate.
+    _client.tls_set()
+    _client.connect(broker, port, 60)
     _client.loop_start()
     return _client
 
@@ -87,7 +98,7 @@ def _publish(kind, fields):
         return True
     except Exception as error:
         _drop_client()
-        print(f"could not send {kind} (no connection to broker): {error}")
+        print(f"could not send {kind} (TLS connection to broker failed): {error}")
         return False
 
 

@@ -128,11 +128,11 @@ Log out and back in after changing groups.
 cp .env.example .env
 ```
 
-Set at least the API and broker addresses:
+Set at least the API and broker addresses. The broker hostname must stay a DNS-only (grey cloud) record pointing at the EC2 IP: the MQTT listener uses TLS on port 8883 with a Let's Encrypt certificate for `urcast.pjmisev.com`, and Cloudflare only proxies HTTP(S), so turning the proxy on would block port 8883 from ever reaching Mosquitto.
 ```dotenv
 URCAST_API_URL=https://urcast.pjmisev.com
 URCAST_MQTT_BROKER=urcast.pjmisev.com
-URCAST_MQTT_PORT=1883
+URCAST_MQTT_PORT=8883
 ```
 
 Leave `URCAST_NODE_ID`, `URCAST_NODE_TOKEN`, `URCAST_EMAIL`, and `URCAST_PASSWORD` empty. `setup_node.py` fills them in.
@@ -197,7 +197,7 @@ Press `Ctrl+C` at any time to safely terminate the execution loop and release ha
 The node talks to the backend over two transports:
 
 - **REST over HTTP(S)** is used to log in, register the account and node, and verify the saved JWT.
-- **MQTT** carries every reading, diagnostic, and heartbeat. The broker accepts anonymous connections, but the backend reads the JWT from a `token` field inside each payload and drops anything with a missing, expired, or mismatched token.
+- **MQTT over TLS (port 8883)** carries every reading, diagnostic, and heartbeat. `mqtt_client.py` enables TLS with the Pi's system CA store, so the broker's Let's Encrypt certificate and hostname are verified on every connection. The broker accepts anonymous connections, but the backend reads the JWT from a `token` field inside each payload and drops anything with a missing, expired, or mismatched token.
 
 `setup_node.py` performs the REST steps for you. The manual steps below are for debugging or for provisioning a node without the interactive setup.
 
@@ -277,7 +277,7 @@ The API endpoints used are:
 | `urcast/<node_id>/diagnostic` | every 10th successful reading | `uptime`, `light_sensor_status`, `dht22_status`, `pressure_sensor_status`, `token` |
 | `urcast/<node_id>/heartbeat` | every 10th successful reading | `token` |
 
-Sensor failures are sent as `null` (or omitted) rather than a made-up value, and the loop keeps running if the broker is unreachable. The terminal will show `could not send reading (no connection to broker): ...` and retry on the next sample.
+Sensor failures are sent as `null` (or omitted) rather than a made-up value, and the loop keeps running if the broker is unreachable. The terminal will show `could not send reading (TLS connection to broker failed): ...` and retry on the next sample.
 
 ### Troubleshooting
 
@@ -290,7 +290,7 @@ Sensor failures are sent as `null` (or omitted) rather than a made-up value, and
 | `Could not reach the API at ...` | Check `URCAST_API_URL` in `.env` and that the API is running. Use the server's LAN IP, not `localhost`, when the API is on another machine. |
 | Backend drops readings with `token is missing or wrong for node <id>` | Run `setup_node.py` so the token belongs to the account that registered `URCAST_NODE_ID`. |
 | Backend drops readings with `node <id> does not exist` | Run `setup_node.py` to register the node; do not use an id from another node. |
-| `could not send reading (no connection to broker)` | Check `URCAST_MQTT_BROKER` and that Mosquitto is running on `URCAST_MQTT_PORT`. |
+| `could not send reading (TLS connection to broker failed)` | Check `URCAST_MQTT_BROKER` (must be `urcast.pjmisev.com`, kept as a grey-cloud DNS record) and that Mosquitto is listening with TLS on `URCAST_MQTT_PORT` (8883). |
 | Nothing arrives after 24 hours | Check that `URCAST_EMAIL` and `URCAST_PASSWORD` are still valid; the node refreshes the JWT one hour before expiry. |
 | `URCAST_NODE_TOKEN` or `URCAST_NODE_ID` missing from `.env` | Run `setup_node.py` again. It reuses existing values and fills in missing ones. |
 
