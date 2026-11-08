@@ -100,16 +100,23 @@ You can inspect the complete evolution of the individual sensor scripts and diag
 
 1. Clone or download this repository to your Raspberry Pi 5:
 ```bash
-git clone https://github.com/urcast/urcast-node/tree/main
+git clone https://github.com/urcast/urcast-node
 ```
 
-2. Create and activate a virtual environment:
+2. Install MQTT Broker and local client tools and start the services. As well as set them to start on boot.
+```bash
+sudo apt install -y mosquitto mosquitto-clients
+sudo systemctl enable --now mosquitto
+sudo systemctl enable mosquitto
+```
+
+3. Create and activate a virtual environment in urcast-node/:
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-3. Install the Python dependencies:
+4. Install the Python dependencies:
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -123,12 +130,12 @@ sudo usermod -aG gpio "$USER"
 ```
 Log out and back in after changing groups.
 
-4. Create the central `.env` from the template:
+5. Create the central `.env` from the template:
 ```bash
 cp .env.example .env
 ```
 
-Set at least the API and broker addresses. The broker hostname must stay a DNS-only (grey cloud) record pointing at the EC2 IP: the MQTT listener uses TLS on port 8883 with a Let's Encrypt certificate for `urcast.pjmisev.com`, and Cloudflare only proxies HTTP(S), so turning the proxy on would block port 8883 from ever reaching Mosquitto.
+Our default API:
 ```dotenv
 URCAST_API_URL=https://urcast.pjmisev.com
 URCAST_MQTT_BROKER=urcast.pjmisev.com
@@ -138,16 +145,6 @@ URCAST_MQTT_PORT=8883
 Leave `URCAST_NODE_ID`, `URCAST_NODE_TOKEN`, `URCAST_EMAIL`, and `URCAST_PASSWORD` empty. `setup_node.py` fills them in.
 
 If the node runs on the Pi and the API runs on your laptop, use the laptop's LAN IP, not `localhost`.
-
-5. In your local created .env, manually change the location to the correct details using a text editor like micro or vim
-
-```
-URCAST_NODE_NAME=johndoe-outdoor-garden
-URCAST_NODE_LOCATION=Dublin, Ireland
-
-URCAST_NODE_LATITUDE=53.32382908805492
-URCAST_NODE_LONGITUDE=-6.3176879781791895
-```
 
 6. Run the interactive setup:
 ```bash

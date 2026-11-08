@@ -238,15 +238,18 @@ def main():
                 pressure=press.get("pressure"),
                 light_level=light.get("lux"),
             ):
-                # every 10th sample also report sensor health and heartbeat
+                print(f"  sent reading #{seq}")
+
                 if seq % 10 == 0:
-                    mqtt_client.send_heartbeat()
-                    mqtt_client.send_diagnostic(
+                    if mqtt_client.send_heartbeat():
+                        print(f"  sent heartbeat #{seq}")
+                    if mqtt_client.send_diagnostic(
                         light_ok=light.get("lux") is not None
                         or light.get("ch0") is not None,
                         air_ok=air.get("temperature") is not None,
                         pressure_ok=press.get("pressure") is not None,
-                    )
+                    ):
+                        print(f"  sent diagnostic #{seq}")
 
             time.sleep(READ_INTERVAL_S)
     except KeyboardInterrupt:
