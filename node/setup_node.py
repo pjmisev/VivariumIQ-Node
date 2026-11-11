@@ -6,10 +6,8 @@ import getpass
 import re
 import subprocess
 import sys
-from pathlib import Path
 
-import auth_client
-import config
+from . import auth_client, config
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -343,12 +341,11 @@ def _ensure_node(user):
 
 
 def _start_service():
-    script = Path(__file__).resolve().with_name("combinedTest.py")
     print("Starting the sensor service. Press Ctrl+C to stop.")
     try:
         result = subprocess.run(
-            [sys.executable, str(script)],
-            cwd=str(script.parent),
+            [sys.executable, "-m", "node"],
+            cwd=str(config.PROJECT_ROOT),
         )
     except KeyboardInterrupt:
         print("\nStopped.")
@@ -365,7 +362,7 @@ def main(setup_only=False):
     _ensure_node(user)
 
     if setup_only:
-        print("Setup complete. Run test/combinedTest.py to start the service.")
+        print("Setup complete. Run `python -m node` to start the service.")
         return 0
 
     return _start_service()

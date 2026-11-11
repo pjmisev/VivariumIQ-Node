@@ -26,8 +26,7 @@ import time
 
 import paho.mqtt.client as mqtt
 
-import auth_client
-import config
+from . import auth_client, config
 
 _STARTED_AT = time.monotonic()
 _client = None
