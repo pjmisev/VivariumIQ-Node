@@ -1,4 +1,4 @@
-"""Interactive first-run setup for the urcast weather node."""
+"""Interactive first-run setup for the VivariumIQ weather node."""
 
 from __future__ import annotations
 
@@ -121,9 +121,9 @@ def _validate_longitude(value):
 
 def _configured_node_id():
     try:
-        return config.get_int("URCAST_NODE_ID", minimum=1)
+        return config.get_int("VIVARIUMIQ_NODE_ID", minimum=1)
     except config.ConfigError as error:
-        print(f"Ignoring URCAST_NODE_ID: {error}")
+        print(f"Ignoring VIVARIUMIQ_NODE_ID: {error}")
         return None
 
 
@@ -136,7 +136,7 @@ def _configured_optional_float(name, minimum, maximum):
 
 
 def _login():
-    email_default = config.get_str("URCAST_EMAIL")
+    email_default = config.get_str("VIVARIUMIQ_EMAIL")
     email = _ask("Email", default=email_default, validator=_validate_email)
     password = _ask_secret("Password")
 
@@ -149,16 +149,16 @@ def _login():
             print(f"Login failed: {error}")
             if error.status is None:
                 print(
-                    f"Check URCAST_API_URL in {config.ENV_PATH} "
+                    f"Check VIVARIUMIQ_API_URL in {config.ENV_PATH} "
                     "and that the API is running."
                 )
         return None
 
     config.save(
         {
-            "URCAST_EMAIL": email,
-            "URCAST_PASSWORD": password,
-            "URCAST_NODE_TOKEN": token,
+            "VIVARIUMIQ_EMAIL": email,
+            "VIVARIUMIQ_PASSWORD": password,
+            "VIVARIUMIQ_NODE_TOKEN": token,
         }
     )
     print("Logged in. Saved the JWT and account credentials to .env.")
@@ -185,7 +185,7 @@ def _register():
             print(f"Registration failed: {error}")
             if error.status is None:
                 print(
-                    f"Check URCAST_API_URL in {config.ENV_PATH} "
+                    f"Check VIVARIUMIQ_API_URL in {config.ENV_PATH} "
                     "and that the API is running."
                 )
         return None
@@ -200,9 +200,9 @@ def _register():
 
     config.save(
         {
-            "URCAST_EMAIL": email,
-            "URCAST_PASSWORD": password,
-            "URCAST_NODE_TOKEN": token,
+            "VIVARIUMIQ_EMAIL": email,
+            "VIVARIUMIQ_PASSWORD": password,
+            "VIVARIUMIQ_NODE_TOKEN": token,
         }
     )
     print("Logged in. Saved the JWT and account credentials to .env.")
@@ -215,7 +215,7 @@ def _ensure_authenticated():
     except auth_client.ApiError as error:
         print(f"Could not check the saved login: {error}")
         print(
-            f"Check URCAST_API_URL in {config.ENV_PATH} "
+            f"Check VIVARIUMIQ_API_URL in {config.ENV_PATH} "
             "and that the API is running."
         )
         raise SystemExit(1) from error
@@ -224,7 +224,7 @@ def _ensure_authenticated():
         print(f"Authenticated as {user.get('username')} ({user.get('email')}).")
         return user
 
-    print("No valid urcast login found.")
+    print("No valid VivariumIQ login found.")
     while True:
         choice = _ask_choice(
             "Log in or register a new account? [l/r/q]",
@@ -274,28 +274,28 @@ def _ensure_node(user):
             else:
                 print(f"Could not load node {node_id}; registering a new node.")
 
-    node_name_default = config.get_str("URCAST_NODE_NAME", config.DEFAULT_NODE_NAME)
+    node_name_default = config.get_str("VIVARIUMIQ_NODE_NAME", config.DEFAULT_NODE_NAME)
     node_name = _ask(
         "Node name",
         default=node_name_default,
         validator=_validate_node_name,
     )
 
-    location_default = config.get_str("URCAST_NODE_LOCATION")
+    location_default = config.get_str("VIVARIUMIQ_NODE_LOCATION")
     location = _ask_optional(
         "Location",
         default=location_default,
         validator=_validate_location,
     )
 
-    latitude_default = _configured_optional_float("URCAST_NODE_LATITUDE", -90, 90)
+    latitude_default = _configured_optional_float("VIVARIUMIQ_NODE_LATITUDE", -90, 90)
     latitude = _ask_optional(
         "Latitude",
         default=latitude_default,
         validator=_validate_latitude,
     )
 
-    longitude_default = _configured_optional_float("URCAST_NODE_LONGITUDE", -180, 180)
+    longitude_default = _configured_optional_float("VIVARIUMIQ_NODE_LONGITUDE", -180, 180)
     longitude = _ask_optional(
         "Longitude",
         default=longitude_default,
@@ -331,11 +331,11 @@ def _ensure_node(user):
 
     config.save(
         {
-            "URCAST_NODE_ID": new_node_id,
-            "URCAST_NODE_NAME": node_name,
-            "URCAST_NODE_LOCATION": location,
-            "URCAST_NODE_LATITUDE": latitude,
-            "URCAST_NODE_LONGITUDE": longitude,
+            "VIVARIUMIQ_NODE_ID": new_node_id,
+            "VIVARIUMIQ_NODE_NAME": node_name,
+            "VIVARIUMIQ_NODE_LOCATION": location,
+            "VIVARIUMIQ_NODE_LATITUDE": latitude,
+            "VIVARIUMIQ_NODE_LONGITUDE": longitude,
         }
     )
     print(f"Registered node {new_node_id} and saved it to .env.")

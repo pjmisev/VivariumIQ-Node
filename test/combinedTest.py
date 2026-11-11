@@ -77,7 +77,7 @@ BMP_SDA_PIN = board.D17  # Physical Pin 11
 BMP_SCL_PIN = board.D27  # Physical Pin 13
 BMP280_ADDRESS = 0x76
 READ_INTERVAL_S = config.get_float(
-    "URCAST_READ_INTERVAL_S",
+    "VIVARIUMIQ_READ_INTERVAL_S",
     config.DEFAULT_READ_INTERVAL_S,
     minimum=0.1,
 )
@@ -238,15 +238,18 @@ def main():
                 pressure=press.get("pressure"),
                 light_level=light.get("lux"),
             ):
-                # every 10th sample also report sensor health and heartbeat
+                print(f"  sent reading #{seq}")
+
                 if seq % 10 == 0:
-                    mqtt_client.send_heartbeat()
-                    mqtt_client.send_diagnostic(
+                    if mqtt_client.send_heartbeat():
+                        print(f"  sent heartbeat #{seq}")
+                    if mqtt_client.send_diagnostic(
                         light_ok=light.get("lux") is not None
                         or light.get("ch0") is not None,
                         air_ok=air.get("temperature") is not None,
                         pressure_ok=press.get("pressure") is not None,
-                    )
+                    ):
+                        print(f"  sent diagnostic #{seq}")
 
             time.sleep(READ_INTERVAL_S)
     except KeyboardInterrupt:

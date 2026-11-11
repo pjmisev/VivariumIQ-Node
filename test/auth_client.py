@@ -1,4 +1,4 @@
-"""HTTP authentication and JWT refresh helpers for the urcast node."""
+"""HTTP authentication and JWT refresh helpers for the VivariumIQ node."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class AuthError(RuntimeError):
 
 
 def api_url():
-    return config.get_str("URCAST_API_URL", config.DEFAULT_API_URL).rstrip("/")
+    return config.get_str("VIVARIUMIQ_API_URL", config.DEFAULT_API_URL).rstrip("/")
 
 
 def _error_detail(body):
@@ -133,7 +133,7 @@ def get_node(node_id):
 
 
 def check_authentication(token=None):
-    token = token or config.get_str("URCAST_NODE_TOKEN")
+    token = token or config.get_str("VIVARIUMIQ_NODE_TOKEN")
     if not token or token == PLACEHOLDER_TOKEN:
         return None
     try:
@@ -178,15 +178,15 @@ def _needs_refresh(token):
 class TokenManager:
     def __init__(self):
         self._lock = threading.Lock()
-        self._token = config.get_str("URCAST_NODE_TOKEN")
-        self._email = config.get_str("URCAST_EMAIL")
-        self._password = config.get_str("URCAST_PASSWORD")
+        self._token = config.get_str("VIVARIUMIQ_NODE_TOKEN")
+        self._email = config.get_str("VIVARIUMIQ_EMAIL")
+        self._password = config.get_str("VIVARIUMIQ_PASSWORD")
         self._next_retry = 0.0
 
     def _credentials(self):
         if not self._email or not self._password:
             raise AuthError(
-                "URCAST_EMAIL and URCAST_PASSWORD are missing from .env; "
+                "VIVARIUMIQ_EMAIL and VIVARIUMIQ_PASSWORD are missing from .env; "
                 "run setup_node.py first"
             )
         return self._email, self._password
@@ -215,7 +215,7 @@ class TokenManager:
 
             self._token = token
             self._next_retry = 0.0
-            config.save({"URCAST_NODE_TOKEN": token})
+            config.save({"VIVARIUMIQ_NODE_TOKEN": token})
             return token
 
 
