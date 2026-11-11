@@ -1,16 +1,16 @@
-# One-time registration for the urcast weather node.
+# One-time registration for the VivariumIQ weather node.
 #
 # A node can only be created by a logged-in user. This script sends
 # POST /api/node with the owner's JWT in the Authorization header, then saves
-# the returned node id to the repository-root .env as URCAST_NODE_ID.
+# the returned node id to the repository-root .env as VIVARIUMIQ_NODE_ID.
 #
 # Settings are read from .env:
-#   URCAST_API_URL        -- address of the urcast API
-#   URCAST_NODE_TOKEN     -- the JWT from /api/auth/login
-#   URCAST_NODE_NAME      -- a name for this node (1-100 characters)
-#   URCAST_NODE_LOCATION  -- optional human-readable location
-#   URCAST_NODE_LATITUDE  -- optional decimal latitude
-#   URCAST_NODE_LONGITUDE -- optional decimal longitude
+#   VIVARIUMIQ_API_URL        -- address of the VivariumIQ API
+#   VIVARIUMIQ_NODE_TOKEN     -- the JWT from /api/auth/login
+#   VIVARIUMIQ_NODE_NAME      -- a name for this node (1-100 characters)
+#   VIVARIUMIQ_NODE_LOCATION  -- optional human-readable location
+#   VIVARIUMIQ_NODE_LATITUDE  -- optional decimal latitude
+#   VIVARIUMIQ_NODE_LONGITUDE -- optional decimal longitude
 #
 # The JWT expires 24 hours after login. If the API returns HTTP 401, run the
 # login step again or use setup_node.py to refresh the token automatically.
@@ -33,20 +33,20 @@ def _error_detail(body):
 
 
 def register_node():
-    api_url = config.get_str("URCAST_API_URL", config.DEFAULT_API_URL).rstrip("/")
-    node_token = config.get_str("URCAST_NODE_TOKEN", required=True)
-    node_name = config.get_str("URCAST_NODE_NAME", config.DEFAULT_NODE_NAME)
-    node_location = config.get_str("URCAST_NODE_LOCATION")
+    api_url = config.get_str("VIVARIUMIQ_API_URL", config.DEFAULT_API_URL).rstrip("/")
+    node_token = config.get_str("VIVARIUMIQ_NODE_TOKEN", required=True)
+    node_name = config.get_str("VIVARIUMIQ_NODE_NAME", config.DEFAULT_NODE_NAME)
+    node_location = config.get_str("VIVARIUMIQ_NODE_LOCATION")
     latitude = config.get_optional_float(
-        "URCAST_NODE_LATITUDE", minimum=-90, maximum=90
+        "VIVARIUMIQ_NODE_LATITUDE", minimum=-90, maximum=90
     )
     longitude = config.get_optional_float(
-        "URCAST_NODE_LONGITUDE", minimum=-180, maximum=180
+        "VIVARIUMIQ_NODE_LONGITUDE", minimum=-180, maximum=180
     )
 
     if node_token == PLACEHOLDER_TOKEN:
-        print("Registration failed: URCAST_NODE_TOKEN is still the placeholder.")
-        print("Run setup_node.py or log in and update URCAST_NODE_TOKEN in .env.")
+        print("Registration failed: VIVARIUMIQ_NODE_TOKEN is still the placeholder.")
+        print("Run setup_node.py or log in and update VIVARIUMIQ_NODE_TOKEN in .env.")
         return None
 
     if not 1 <= len(node_name) <= 100:
@@ -81,7 +81,7 @@ def register_node():
         if error.code == 401:
             print("Registration failed: invalid or expired token (HTTP 401).")
             print(f"API detail: {detail}")
-            print("Run setup_node.py or log in again to refresh URCAST_NODE_TOKEN.")
+            print("Run setup_node.py or log in again to refresh VIVARIUMIQ_NODE_TOKEN.")
         elif error.code == 422:
             print("Registration failed: validation error (HTTP 422).")
             print(f"API detail: {detail}")
@@ -106,11 +106,11 @@ def register_node():
         print(f"API response: {body}")
         return None
 
-    config.save({"URCAST_NODE_ID": node_id})
+    config.save({"VIVARIUMIQ_NODE_ID": node_id})
     print(f"node_name: {node.get('node_name', node_name)}")
     print(f"node_id:   {node_id}")
     print()
-    print("Saved URCAST_NODE_ID to .env.")
+    print("Saved VIVARIUMIQ_NODE_ID to .env.")
     return node_id
 
 

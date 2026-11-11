@@ -77,7 +77,7 @@ BMP_SDA_PIN = board.D17  # Physical Pin 11
 BMP_SCL_PIN = board.D27  # Physical Pin 13
 BMP280_ADDRESS = 0x76
 READ_INTERVAL_S = config.get_float(
-    "URCAST_READ_INTERVAL_S",
+    "VIVARIUMIQ_READ_INTERVAL_S",
     config.DEFAULT_READ_INTERVAL_S,
     minimum=0.1,
 )

@@ -1,6 +1,6 @@
-# MQTT publisher for the urcast weather node.
+# MQTT publisher for the VivariumIQ weather node.
 #
-# Every message is published to urcast/<node_id>/<kind> and carries the owner's
+# Every message is published to vivariumiq/<node_id>/<kind> and carries the owner's
 # JWT in the "token" field. The backend drops anything with a missing, expired,
 # or wrong token, so keep the node account in sync with the account that
 # registered this node.
@@ -8,17 +8,17 @@
 # The connection to the broker uses TLS on port 8883. tls_set() with no
 # arguments trusts the Pi's system CA store and verifies the broker's Let's
 # Encrypt certificate, including the hostname, so the broker address must be
-# the DNS-only (grey cloud) hostname urcast.pjmisev.com pointing straight at
+# the DNS-only (grey cloud) hostname vivariumiq.pjmisev.com pointing straight at
 # the EC2 IP. The record must stay un-proxied: Cloudflare only proxies
 # HTTP(S), so with the proxy on, port 8883 never reaches Mosquitto. TLS is
 # transport-level only; payload format, topics, and the JWT-in-payload auth
 # are unchanged.
 #
 # Settings are read from the repository-root .env:
-#   URCAST_MQTT_BROKER -- the broker hostname (urcast.pjmisev.com)
-#   URCAST_MQTT_PORT   -- the Mosquitto TLS port (8883)
-#   URCAST_NODE_ID     -- the id returned by registration
-#   URCAST_NODE_TOKEN  -- the JWT from /api/auth/login; auth_client refreshes it
+#   VIVARIUMIQ_MQTT_BROKER -- the broker hostname (vivariumiq.pjmisev.com)
+#   VIVARIUMIQ_MQTT_PORT   -- the Mosquitto TLS port (8883)
+#   VIVARIUMIQ_NODE_ID     -- the id returned by registration
+#   VIVARIUMIQ_NODE_TOKEN  -- the JWT from /api/auth/login; auth_client refreshes it
 #                        automatically before it expires
 
 import json
@@ -34,14 +34,14 @@ _client = None
 
 
 def _settings():
-    broker = config.get_str("URCAST_MQTT_BROKER", config.DEFAULT_MQTT_BROKER)
+    broker = config.get_str("VIVARIUMIQ_MQTT_BROKER", config.DEFAULT_MQTT_BROKER)
     port = config.get_int(
-        "URCAST_MQTT_PORT",
+        "VIVARIUMIQ_MQTT_PORT",
         config.DEFAULT_MQTT_PORT,
         minimum=1,
         maximum=65535,
     )
-    node_id = config.get_int("URCAST_NODE_ID", required=True, minimum=1)
+    node_id = config.get_int("VIVARIUMIQ_NODE_ID", required=True, minimum=1)
     return broker, port, node_id
 
 
@@ -88,7 +88,7 @@ def _publish(kind, fields):
 
     payload = dict(fields)
     payload["token"] = token
-    topic = f"urcast/{node_id}/{kind}"
+    topic = f"vivariumiq/{node_id}/{kind}"
 
     try:
         client = _get_client(broker, port)

@@ -174,12 +174,12 @@ cp .env.example .env
 Our default API:
 
 ```dotenv
-URCAST_API_URL=https://urcast.pjmisev.com
-URCAST_MQTT_BROKER=urcast.pjmisev.com
-URCAST_MQTT_PORT=8883
+VIVARIUMIQ_API_URL=https://vivariumiq.pjmisev.com
+VIVARIUMIQ_MQTT_BROKER=vivariumiq.pjmisev.com
+VIVARIUMIQ_MQTT_PORT=8883
 ```
 
-Leave `URCAST_NODE_ID`, `URCAST_NODE_TOKEN`, `URCAST_EMAIL`, and `URCAST_PASSWORD` empty. `setup_node.py` fills them in.
+Leave `VIVARIUMIQ_NODE_ID`, `VIVARIUMIQ_NODE_TOKEN`, `VIVARIUMIQ_EMAIL`, and `VIVARIUMIQ_PASSWORD` empty. `setup_node.py` fills them in.
 
 If the node runs on the Pi and the API runs on your laptop, use the laptop's LAN IP, not `localhost`.
 
@@ -243,12 +243,12 @@ python setup_node.py
 The script:
 
 1. Loads `.env`.
-2. Calls `GET /api/auth/me` with `URCAST_NODE_TOKEN`.
+2. Calls `GET /api/auth/me` with `VIVARIUMIQ_NODE_TOKEN`.
 3. If the token is missing or expired, asks whether to log in, register, or quit.
-4. On login, validates the email and password, then writes `URCAST_EMAIL`, `URCAST_PASSWORD`, and `URCAST_NODE_TOKEN` to `.env`.
+4. On login, validates the email and password, then writes `VIVARIUMIQ_EMAIL`, `VIVARIUMIQ_PASSWORD`, and `VIVARIUMIQ_NODE_TOKEN` to `.env`.
 5. On registration, validates the username, email, and password, creates the account with `POST /api/user`, then logs in and saves the same values.
-6. Checks `URCAST_NODE_ID`; if it is missing or owned by another account, asks for the node name, location, and optional coordinates, then creates it with `POST /api/node`.
-7. Saves `URCAST_NODE_ID` and the node details to `.env`.
+6. Checks `VIVARIUMIQ_NODE_ID`; if it is missing or owned by another account, asks for the node name, location, and optional coordinates, then creates it with `POST /api/node`.
+7. Saves `VIVARIUMIQ_NODE_ID` and the node details to `.env`.
 8. Starts `combinedTest.py`.
 
 Use `python setup_node.py --setup-only` to stop before step 8.
@@ -257,15 +257,15 @@ Use `python setup_node.py --setup-only` to stop before step 8.
 
 | Key | Source |
 | :--- | :--- |
-| `URCAST_API_URL` | you |
-| `URCAST_MQTT_BROKER` | you |
-| `URCAST_MQTT_PORT` | you |
-| `URCAST_EMAIL` | login/register prompt |
-| `URCAST_PASSWORD` | login/register prompt |
-| `URCAST_NODE_TOKEN` | `/api/auth/login` response |
-| `URCAST_NODE_ID` | `POST /api/node` response |
-| `URCAST_NODE_NAME`, `URCAST_NODE_LOCATION`, `URCAST_NODE_LATITUDE`, `URCAST_NODE_LONGITUDE` | information for database to be filled in manually |
-| `URCAST_READ_INTERVAL_S` | you (optional, defaults to `60.0`) |
+| `VIVARIUMIQ_API_URL` | you |
+| `VIVARIUMIQ_MQTT_BROKER` | you |
+| `VIVARIUMIQ_MQTT_PORT` | you |
+| `VIVARIUMIQ_EMAIL` | login/register prompt |
+| `VIVARIUMIQ_PASSWORD` | login/register prompt |
+| `VIVARIUMIQ_NODE_TOKEN` | `/api/auth/login` response |
+| `VIVARIUMIQ_NODE_ID` | `POST /api/node` response |
+| `VIVARIUMIQ_NODE_NAME`, `VIVARIUMIQ_NODE_LOCATION`, `VIVARIUMIQ_NODE_LATITUDE`, `VIVARIUMIQ_NODE_LONGITUDE` | information for database to be filled in manually |
+| `VIVARIUMIQ_READ_INTERVAL_S` | you (optional, defaults to `60.0`) |
 
 `.env` is gitignored and is set to owner-only permissions (`600`) on Linux. Do not share it: it contains the account password and node JWT.
 
@@ -274,15 +274,15 @@ Use `python setup_node.py --setup-only` to stop before step 8.
 The token is an HS256 JWT and is valid for **24 hours**. The node renews it automatically through `auth_client.py`:
 
 - the token expiry is checked before every MQTT publish;
-- when less than one hour remains, the node logs in again with `URCAST_EMAIL` and `URCAST_PASSWORD`;
-- the new token is written back to `URCAST_NODE_TOKEN` in `.env`;
+- when less than one hour remains, the node logs in again with `VIVARIUMIQ_EMAIL` and `VIVARIUMIQ_PASSWORD`;
+- the new token is written back to `VIVARIUMIQ_NODE_TOKEN` in `.env`;
 - if the API is temporarily unreachable, the old token keeps being used while it is still valid and the refresh is retried every 60 seconds.
 
 This requires the API to be reachable around the refresh time and the stored credentials to remain valid. If the password changes, run `setup_node.py` and log in again to update `.env`.
 
 ### Manual registration (optional)
 
-If you already have a JWT and want to register the node non-interactively, set `URCAST_API_URL`, `URCAST_NODE_TOKEN`, and the `URCAST_NODE_*` fields in `.env`, then run:
+If you already have a JWT and want to register the node non-interactively, set `VIVARIUMIQ_API_URL`, `VIVARIUMIQ_NODE_TOKEN`, and the `VIVARIUMIQ_NODE_*` fields in `.env`, then run:
 
 ```bash
 cd test
@@ -304,9 +304,9 @@ The API endpoints used are:
 
 | Topic | When | Payload |
 | :--- | :--- | :--- |
-| `urcast/<node_id>/reading` | every sample (~3 s) | `temperature`, `humidity`, `pressure`, `motion`, `token` |
-| `urcast/<node_id>/diagnostic` | every 10th successful reading | `uptime`, `motion_sensor_status`, `dht22_status`, `pressure_sensor_status`, `token` |
-| `urcast/<node_id>/heartbeat` | every 10th successful reading | `token` |
+| `vivariumiq/<node_id>/reading` | every sample (~3 s) | `temperature`, `humidity`, `pressure`, `motion`, `token` |
+| `vivariumiq/<node_id>/diagnostic` | every 10th successful reading | `uptime`, `motion_sensor_status`, `dht22_status`, `pressure_sensor_status`, `token` |
+| `vivariumiq/<node_id>/heartbeat` | every 10th successful reading | `token` |
 
 Sensor failures are sent as `null` (or omitted) rather than a made-up value, and the loop keeps running if the broker is unreachable. The terminal will show `could not send reading (TLS connection to broker failed): ...` and retry on the next sample.
 
@@ -314,16 +314,16 @@ Sensor failures are sent as `null` (or omitted) rather than a made-up value, and
 
 | Symptom | Fix |
 | :--- | :--- |
-| `No valid urcast login found` | Run `setup_node.py` and choose login or register. |
-| Login returns `401` | Check `URCAST_EMAIL` and `URCAST_PASSWORD`; the API reports `Invalid email or password`. |
+| `No valid vivariumiq login found` | Run `setup_node.py` and choose login or register. |
+| Login returns `401` | Check `VIVARIUMIQ_EMAIL` and `VIVARIUMIQ_PASSWORD`; the API reports `Invalid email or password`. |
 | Registration returns `400` | The username or email already exists. Choose login instead, or use a different email. |
 | Registration returns `422` | The API validation failed; check the printed detail (for example, a password under 8 characters). |
-| `Could not reach the API at ...` | Check `URCAST_API_URL` in `.env` and that the API is running. Use the server's LAN IP, not `localhost`, when the API is on another machine. |
-| Backend drops readings with `token is missing or wrong for node <id>` | Run `setup_node.py` so the token belongs to the account that registered `URCAST_NODE_ID`. |
+| `Could not reach the API at ...` | Check `VIVARIUMIQ_API_URL` in `.env` and that the API is running. Use the server's LAN IP, not `localhost`, when the API is on another machine. |
+| Backend drops readings with `token is missing or wrong for node <id>` | Run `setup_node.py` so the token belongs to the account that registered `VIVARIUMIQ_NODE_ID`. |
 | Backend drops readings with `node <id> does not exist` | Run `setup_node.py` to register the node; do not use an id from another node. |
-| `could not send reading (TLS connection to broker failed)` | Check `URCAST_MQTT_BROKER` (must be `urcast.pjmisev.com`, kept as a grey-cloud DNS record) and that Mosquitto is listening with TLS on `URCAST_MQTT_PORT` (8883). |
-| Nothing arrives after 24 hours | Check that `URCAST_EMAIL` and `URCAST_PASSWORD` are still valid; the node refreshes the JWT one hour before expiry. |
-| `URCAST_NODE_TOKEN` or `URCAST_NODE_ID` missing from `.env` | Run `setup_node.py` again. It reuses existing values and fills in missing ones. |
+| `could not send reading (TLS connection to broker failed)` | Check `VIVARIUMIQ_MQTT_BROKER` (must be `vivariumiq.pjmisev.com`, kept as a grey-cloud DNS record) and that Mosquitto is listening with TLS on `VIVARIUMIQ_MQTT_PORT` (8883). |
+| Nothing arrives after 24 hours | Check that `VIVARIUMIQ_EMAIL` and `VIVARIUMIQ_PASSWORD` are still valid; the node refreshes the JWT one hour before expiry. |
+| `VIVARIUMIQ_NODE_TOKEN` or `VIVARIUMIQ_NODE_ID` missing from `.env` | Run `setup_node.py` again. It reuses existing values and fills in missing ones. |
 
 ---
 
