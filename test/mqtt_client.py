@@ -102,24 +102,24 @@ def _publish(kind, fields):
         return False
 
 
-def send_reading(temperature, humidity, pressure, light_level):
+def send_reading(temperature, humidity, pressure, motion):
     return _publish(
         "reading",
         {
             "temperature": temperature,
             "humidity": humidity,
             "pressure": pressure,
-            "light_level": light_level,
+            "motion": motion,
         },
     )
 
 
-def send_diagnostic(light_ok, air_ok, pressure_ok):
+def send_diagnostic(motion_ok, air_ok, pressure_ok):
     return _publish(
         "diagnostic",
         {
             "uptime": int(time.monotonic() - _STARTED_AT),
-            "light_sensor_status": light_ok,
+            "motion_sensor_status": motion_ok,
             "dht22_status": air_ok,
             "pressure_sensor_status": pressure_ok,
         },

@@ -97,7 +97,8 @@ VivariumIQ-Node/
 │   ├── mqtt_client.py    # MQTT publisher (readings, diagnostics, heartbeat)
 │   ├── combinedTest.py   # Main sensor loop (also started by setup_node.py)
 │   ├── bmp280.py         # Standalone hardware test script for BMP280
-│   └── dht22.py          # Standalone hardware test script for DHT22
+│   ├── dht22.py          # Standalone hardware test script for DHT22
+│   └── pir.py            # Standalone hardware test script for the PIR motion sensor
 │
 └── README.md             # Project documentation
 ```
