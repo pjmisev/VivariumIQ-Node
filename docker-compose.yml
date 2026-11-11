@@ -1,0 +1,16 @@
+services:
+  node:
+    build: .
+    image: vivariumiq-node:latest
+    container_name: vivariumiq-node
+
+    # The node drives GPIO directly (DHT22, software I2C for the BMP280, and the
+    # PIR), so it needs the Pi's hardware: /dev/gpiochip*, /dev/i2c-*, /dev/mem.
+    privileged: true
+
+    # .env is read and written in place (the JWT is refreshed periodically), so
+    # mount it as a file. Create it first with: cp .env.example .env
+    volumes:
+      - ./.env:/app/.env
+
+    restart: unless-stopped

@@ -85,20 +85,28 @@ The node focuses strictly on raw data collection; the backend derives everything
 ```text
 VivariumIQ-Node/
 │
+├── .dockerignore         # Files excluded from the Docker build context
 ├── .env.example          # Template for the central .env configuration
 ├── .gitignore            # Keeps .env and local Python files out of git
+├── Dockerfile            # Image definition for running the node in a container
+├── docker-compose.yml    # Compose service (privileged, mounts .env)
 ├── requirements.txt      # Python dependencies for the node
 │
-├── test/
+├── node/                 # The node application (importable package)
+│   ├── __init__.py
+│   ├── __main__.py       # Entry point for `python -m node`
 │   ├── config.py         # Loads and saves the central .env values
 │   ├── auth_client.py    # Login, registration, auth checks, and JWT refresh
-│   ├── setup_node.py     # Interactive first-run setup and service launcher
-│   ├── register_node.py  # Non-interactive node registration with an existing JWT
 │   ├── mqtt_client.py    # MQTT publisher (readings, diagnostics, heartbeat)
-│   ├── combinedTest.py   # Main sensor loop (also started by setup_node.py)
-│   ├── bmp280.py         # Standalone hardware test script for BMP280
-│   ├── dht22.py          # Standalone hardware test script for DHT22
-│   └── pir.py            # Standalone hardware test script for the PIR motion sensor
+│   ├── sensors.py        # Opens and reads the DHT22, BMP280, and PIR
+│   ├── telemetry.py      # Main sampling and publishing loop
+│   ├── setup_node.py     # Interactive setup (`python -m node.setup_node`)
+│   └── register_node.py  # Non-interactive registration with an existing JWT
+│
+├── tools/                # Standalone hardware test scripts
+│   ├── bmp280.py         # Quick BMP280 check
+│   ├── dht22.py          # Quick DHT22 check
+│   └── pir.py            # Quick PIR check
 │
 └── README.md             # Project documentation
 ```
@@ -131,6 +139,7 @@ cd VivariumIQ-Node
 - Python 3.10 or newer.
 - Physical wiring of the DHT22, BMP280, and PIR motion sensor modules according to the hardware stack pinout table above.
 - Access to the VivariumIQ API and MQTT broker. Their addresses go in the central `.env` file.
+- Optional: Docker with the Compose plugin, to run the node in a container (see [Running with Docker](#running-with-docker)).
 
 ### 3. Setup Instructions
 
@@ -184,11 +193,10 @@ Leave `VIVARIUMIQ_NODE_ID`, `VIVARIUMIQ_NODE_TOKEN`, `VIVARIUMIQ_EMAIL`, and `VI
 
 If the node runs on the Pi and the API runs on your laptop, use the laptop's LAN IP, not `localhost`.
 
-5. Run the interactive setup:
+5. Run the interactive setup from the repository root:
 
 ```bash
-cd test
-python setup_node.py
+python -m node.setup_node
 ```
 
 The setup script will:
@@ -202,7 +210,7 @@ The setup script will:
 To configure without starting the service, run:
 
 ```bash
-python setup_node.py --setup-only
+python -m node.setup_node --setup-only
 ```
 
 `.env` is created with owner-only permissions and is ignored by git. Keep it private: it contains the account password and node JWT.
@@ -211,21 +219,112 @@ python setup_node.py --setup-only
 
 ## Running and Testing
 
-The recommended entry point is the setup script, which also starts the service:
+The recommended entry point is the setup script, which checks the login, registers the node, and starts the service:
 
 ```bash
-cd test
-python setup_node.py
+python -m node.setup_node
 ```
 
-After `.env` is configured, the sensor loop can also be started directly:
+After `.env` is configured, the sensor loop can also be started on its own:
 
 ```bash
-cd test
-python combinedTest.py
+python -m node
+```
+
+The standalone hardware checks in `tools/` are handy while wiring a sensor:
+
+```bash
+python tools/dht22.py
+python tools/bmp280.py
+python tools/pir.py
 ```
 
 Press `Ctrl+C` at any time to safely terminate the execution loop and release hardware interfaces.
+
+---
+
+## Running with Docker
+
+The node ships with a `Dockerfile` and a `docker-compose.yml`, so it can run on any Raspberry Pi without installing Python or the sensor libraries on the host. The image is based on `python:3.11-slim-bookworm`, installs `libgpiod` for GPIO access, and runs the service with `python -m node`.
+
+| File | Purpose |
+| :--- | :--- |
+| `Dockerfile` | Builds the node image: system libraries, Python dependencies, and the `node/` and `tools/` code. |
+| `docker-compose.yml` | Runs the image `privileged`, mounts `./.env`, and restarts the node automatically. |
+| `.dockerignore` | Keeps `.env`, git data, and Python caches out of the build context. |
+
+### 1. Prerequisites
+
+- Docker Engine with the Compose plugin:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker "$USER"   # log out and back in afterwards
+```
+
+- I2C enabled on the host (`sudo raspi-config` → Interface Options → I2C), since the container uses the host kernel drivers.
+- A populated `./.env` file (created in step 3).
+
+### 2. Build the image
+
+```bash
+docker compose build
+```
+
+Build on the Pi itself so the image matches its CPU architecture (`arm64` on Pi 4/5, `armv7` on older boards). For cross-architecture builds use `docker buildx build --platform linux/arm64`.
+
+### 3. Provision the node (once)
+
+`.env` must exist before Compose starts, because it is bind-mounted and rewritten in place whenever the JWT is refreshed:
+
+```bash
+cp .env.example .env
+docker compose run --rm -it node python -m node.setup_node --setup-only
+```
+
+The `--setup-only` flag stops after login/registration instead of starting the service inside this throwaway container. It writes `VIVARIUMIQ_NODE_TOKEN` and `VIVARIUMIQ_NODE_ID` back to `./.env` on the host.
+
+### 4. Start the service
+
+```bash
+docker compose up -d --build
+```
+
+### Common commands
+
+```bash
+docker compose logs -f node      # follow the sample log
+docker compose ps                # check that it is running
+docker compose down              # stop and remove the container
+docker compose up -d --build     # rebuild and restart after a code change
+```
+
+### Hardware access
+
+The container drives the GPIO and I2C peripherals directly, so `docker-compose.yml` runs it `privileged`. That grants access to the host devices the node needs: `/dev/gpiochip*` for the PIR and the software-I2C BMP280, and `/dev/i2c-*` if you use the hardware I2C bus. To avoid `privileged`, replace it with an explicit device allow-list plus the `gpio`/`i2c` groups:
+
+```yaml
+    devices:
+      - /dev/gpiochip4:/dev/gpiochip4   # Pi 5 40-pin header
+      - /dev/i2c-1:/dev/i2c-1
+    group_add:
+      - gpio
+      - i2c
+```
+
+### Auto-start on boot
+
+`restart: unless-stopped` brings the node back whenever the Pi reboots or the process exits, so `docker compose up -d` is only needed once. Ensure Docker itself starts on boot with `sudo systemctl enable docker`.
+
+### Docker troubleshooting
+
+| Symptom | Fix |
+| :--- | :--- |
+| `permission denied` on `/dev/gpiochip0` | Keep `privileged: true`, or use the explicit `devices`/`group_add` list above. |
+| `import gpiod` fails / `libgpiod` error | The container's `libgpiod` must match the pip `gpiod` version. Align the `gpiod` pin in `requirements.txt` with the base image's `libgpiod`, or base the `Dockerfile` on the same Raspberry Pi OS release as the host. |
+| `.env` appears as a directory | `.env` must exist as a file before `docker compose up`; run `cp .env.example .env` first. |
+| `exec format error` when starting | The image was built for the wrong architecture; rebuild it on the Pi. |
+| Readings never arrive | Check `docker compose logs -f node`, confirm I2C is enabled on the host, and verify `VIVARIUMIQ_MQTT_BROKER` in `.env`. |
 
 ---
 
@@ -235,10 +334,10 @@ Press `Ctrl+C` at any time to safely terminate the execution loop and release ha
 
 ### Automatic setup (recommended)
 
-Run from `test/`:
+Run from the repository root:
 
 ```bash
-python setup_node.py
+python -m node.setup_node
 ```
 
 The script:
@@ -250,9 +349,9 @@ The script:
 5. On registration, validates the username, email, and password, creates the account with `POST /api/user`, then logs in and saves the same values.
 6. Checks `VIVARIUMIQ_NODE_ID`; if it is missing or owned by another account, asks for the node name, location, and optional coordinates, then creates it with `POST /api/node`.
 7. Saves `VIVARIUMIQ_NODE_ID` and the node details to `.env`.
-8. Starts `combinedTest.py`.
+8. Starts the telemetry loop (`python -m node`).
 
-Use `python setup_node.py --setup-only` to stop before step 8.
+Use `python -m node.setup_node --setup-only` to stop before step 8.
 
 ### What the setup writes to .env
 
@@ -286,8 +385,7 @@ This requires the API to be reachable around the refresh time and the stored cre
 If you already have a JWT and want to register the node non-interactively, set `VIVARIUMIQ_API_URL`, `VIVARIUMIQ_NODE_TOKEN`, and the `VIVARIUMIQ_NODE_*` fields in `.env`, then run:
 
 ```bash
-cd test
-python register_node.py
+python -m node.register_node
 ```
 
 The script sends `POST /api/node` with `Authorization: Bearer <token>` and saves the returned `node_id` to `.env`. This path does not prompt and does not refresh the token; use `setup_node.py` for the normal setup.
@@ -301,7 +399,7 @@ The API endpoints used are:
 
 ### MQTT topics
 
-`combinedTest.py` continues to print samples to the terminal and additionally publishes:
+The telemetry loop (`node/telemetry.py`) prints samples to the terminal and additionally publishes:
 
 | Topic | When | Payload |
 | :--- | :--- | :--- |
@@ -315,16 +413,16 @@ Sensor failures are sent as `null` (or omitted) rather than a made-up value, and
 
 | Symptom | Fix |
 | :--- | :--- |
-| `No valid vivariumiq login found` | Run `setup_node.py` and choose login or register. |
+| `No valid vivariumiq login found` | Run `python -m node.setup_node` and choose login or register. |
 | Login returns `401` | Check `VIVARIUMIQ_EMAIL` and `VIVARIUMIQ_PASSWORD`; the API reports `Invalid email or password`. |
 | Registration returns `400` | The username or email already exists. Choose login instead, or use a different email. |
 | Registration returns `422` | The API validation failed; check the printed detail (for example, a password under 8 characters). |
 | `Could not reach the API at ...` | Check `VIVARIUMIQ_API_URL` in `.env` and that the API is running. Use the server's LAN IP, not `localhost`, when the API is on another machine. |
-| Backend drops readings with `token is missing or wrong for node <id>` | Run `setup_node.py` so the token belongs to the account that registered `VIVARIUMIQ_NODE_ID`. |
-| Backend drops readings with `node <id> does not exist` | Run `setup_node.py` to register the node; do not use an id from another node. |
+| Backend drops readings with `token is missing or wrong for node <id>` | Run `python -m node.setup_node` so the token belongs to the account that registered `VIVARIUMIQ_NODE_ID`. |
+| Backend drops readings with `node <id> does not exist` | Run `python -m node.setup_node` to register the node; do not use an id from another node. |
 | `could not send reading (TLS connection to broker failed)` | Check `VIVARIUMIQ_MQTT_BROKER` (must be `vivariumiq.pjmisev.com`, kept as a grey-cloud DNS record) and that Mosquitto is listening with TLS on `VIVARIUMIQ_MQTT_PORT` (8883). |
 | Nothing arrives after 24 hours | Check that `VIVARIUMIQ_EMAIL` and `VIVARIUMIQ_PASSWORD` are still valid; the node refreshes the JWT one hour before expiry. |
-| `VIVARIUMIQ_NODE_TOKEN` or `VIVARIUMIQ_NODE_ID` missing from `.env` | Run `setup_node.py` again. It reuses existing values and fills in missing ones. |
+| `VIVARIUMIQ_NODE_TOKEN` or `VIVARIUMIQ_NODE_ID` missing from `.env` | Run `python -m node.setup_node` again. It reuses existing values and fills in missing ones. |
 
 ---
 

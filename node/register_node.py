@@ -13,14 +13,14 @@
 #   VIVARIUMIQ_NODE_LONGITUDE -- optional decimal longitude
 #
 # The JWT expires 24 hours after login. If the API returns HTTP 401, run the
-# login step again or use setup_node.py to refresh the token automatically.
+# login step again or use `python -m node.setup_node` to refresh the token.
 
 import json
 import sys
 import urllib.error
 import urllib.request
 
-import config
+from . import config
 
 PLACEHOLDER_TOKEN = "paste-your-jwt-token-here"
 
@@ -46,7 +46,7 @@ def register_node():
 
     if node_token == PLACEHOLDER_TOKEN:
         print("Registration failed: VIVARIUMIQ_NODE_TOKEN is still the placeholder.")
-        print("Run setup_node.py or log in and update VIVARIUMIQ_NODE_TOKEN in .env.")
+        print("Run `python -m node.setup_node` or log in and update VIVARIUMIQ_NODE_TOKEN in .env.")
         return None
 
     if not 1 <= len(node_name) <= 100:
@@ -81,7 +81,7 @@ def register_node():
         if error.code == 401:
             print("Registration failed: invalid or expired token (HTTP 401).")
             print(f"API detail: {detail}")
-            print("Run setup_node.py or log in again to refresh VIVARIUMIQ_NODE_TOKEN.")
+            print("Run `python -m node.setup_node` or log in again to refresh VIVARIUMIQ_NODE_TOKEN.")
         elif error.code == 422:
             print("Registration failed: validation error (HTTP 422).")
             print(f"API detail: {detail}")

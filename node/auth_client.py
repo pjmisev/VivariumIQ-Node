@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-import config
+from . import config
 
 PLACEHOLDER_TOKEN = "paste-your-jwt-token-here"
 TOKEN_REFRESH_MARGIN = timedelta(hours=1)
@@ -187,7 +187,7 @@ class TokenManager:
         if not self._email or not self._password:
             raise AuthError(
                 "VIVARIUMIQ_EMAIL and VIVARIUMIQ_PASSWORD are missing from .env; "
-                "run setup_node.py first"
+                "run `python -m node.setup_node` first"
             )
         return self._email, self._password
 
